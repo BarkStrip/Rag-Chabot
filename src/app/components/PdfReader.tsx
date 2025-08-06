@@ -19,20 +19,6 @@ const PdfReader: React.FC = () => {
     if (file && file.type === 'application/pdf') {
       const formData = new FormData();
       formData.append("pdf", file);
-    
-      // await fetch("/api/upload", {
-      //   method: "POST",
-      //   body: formData,
-      //   });
-
-      /* 
-        Text extraction attempt but pdfToText removes newlines
-      
-        pdfToText(file)
-        .then(text => {
-          console.log(text);
-          console.log(text.split('\n')); })
-        .catch(error => console.error("Failed to extract text from pdf"))*/
 
       // Clean up previous blob URL before assigning a new one
       if (pdfUrl) {

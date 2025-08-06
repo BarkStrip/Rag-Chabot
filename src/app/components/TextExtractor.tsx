@@ -7,6 +7,19 @@ interface TextExtractorProps {
   pdfUrl: string;
 }
 
+      // await fetch("/api/upload", {
+      //   method: "POST",
+      //   body: formData,
+      //   });
+
+      /* 
+        Text extraction attempt but pdfToText removes newlines
+        pdfToText(file)
+        .then(text => {
+          console.log(text);
+          console.log(text.split('\n')); })
+        .catch(error => console.error("Failed to extract text from pdf"))*/
+
 function extractText(file:File) {
     pdfToText(file)
         .then(text => console.log(text))
