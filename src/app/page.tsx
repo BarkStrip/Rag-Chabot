@@ -1,6 +1,7 @@
 "use client"; // Ensures this component runs on the client side (required for using React hooks in Next.js App Router)
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
+
 const App: React.FC = () => {
     const [leftWidth, setLeftWidth] = useState<number>(33.33); // Start with 1/3 width
     const [isDragging, setIsDragging] = useState<boolean>(false);
