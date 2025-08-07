@@ -6,7 +6,7 @@ const App: React.FC = () => {
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to hold the URL of the uploaded PDF file
-    const [pdfArray, setPdfArray] = useState<any[] | null>(null);
+    const [pdfArray, setPdfArray] = useState<unknown[] | null>(null);
 
     useEffect(() => {
         console.log("pdfArray changed:", pdfArray);
@@ -66,6 +66,14 @@ const App: React.FC = () => {
         window.addEventListener("beforeunload", handleBeforeUnload);
         return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [pdfUrl]);
+
+    // Define a type guard
+    const isPdfWithContent = (item: unknown): item is { pageContent: string } => {
+        return typeof item === 'object' &&
+            item !== null &&
+            'pageContent' in item &&
+            typeof (item as { pageContent: unknown }).pageContent === 'string';
+    };
 
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -134,7 +142,7 @@ const App: React.FC = () => {
                                             <svg className="w-5 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                             </svg>
-                                            Choose PDF File
+                                            Choose PDF
                                             <input
                                                 type="file"
                                                 accept="application/pdf"
@@ -211,7 +219,7 @@ const App: React.FC = () => {
                         <div className="bg-gray-800 px-4 py-2 overflow-hidden">
                             <h1 className="text-xl font-large text-gray-400 dark:text-gray-400 ">Chat</h1>
                         </div>
-                        {pdfArray && pdfArray.length > 0 && pdfArray[0].pageContent && <div className="w-full h-[80vh] overflow-hidden whitespace-pre-wrap">
+                        {pdfArray && pdfArray.length > 0 && isPdfWithContent(pdfArray[0]) && pdfArray[0].pageContent && <div className="w-full h-[80vh] overflow-hidden whitespace-pre-wrap">
                             {pdfArray[0].pageContent}
                         </div>}
                     </div>

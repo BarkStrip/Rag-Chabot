@@ -20,10 +20,13 @@ export async function POST(req: NextRequest) {
 
     return Response.json({ document });
 
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error.message || "Unexpected error" }),
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ error: error.message || "Unexpected error" }),
+        { status: 500 }
+      );
+    }
+
   }
 }
