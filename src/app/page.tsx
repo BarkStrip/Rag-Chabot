@@ -72,7 +72,7 @@ const App: React.FC = () => {
         return typeof item === 'object' &&
             item !== null &&
             'pageContent' in item &&
-            typeof (item as any).pageContent === 'string';
+            typeof (item as { pageContent: unknown }).pageContent === 'string';
     };
 
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
