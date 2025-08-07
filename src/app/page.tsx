@@ -117,7 +117,7 @@ const App: React.FC = () => {
                     style={{ width: `${leftWidth}%` }}
                 >
 
-                    {/* Overlay to prevent embedded content from interfering with drag */}
+                    {/* Overlay to prevent embedded content from interfering with drag  */}
                     {isDragging && (
                         <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />
                     )}
