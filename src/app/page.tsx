@@ -10,7 +10,7 @@ const App: React.FC = () => {
 
     useEffect(() => {
         console.log("pdfArray changed:", pdfArray);
-    }, [pdfArray]); // Runs when pdfArray changes
+    }, [pdfArray]); // Runs when pdfArray changes 
 
     // Handles file selection from the input
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
