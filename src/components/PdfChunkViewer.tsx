@@ -1,34 +1,34 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 
-type PdfPage = {
+type PdfChunk = {
     pageContent: string;
 };
 
-type PdfTextViewerProps = {
-    pages: PdfPage[];
+type PdfChunkViewerProps = {
+    chunks: PdfChunk[];
 };
 
-export default function PdfTextViewer({ pages }: PdfTextViewerProps) {
+export default function PdfChunkViewer({ chunks }: PdfChunkViewerProps) {
     const [searchTerm, setSearchTerm] = useState("");
 
-    const filteredPages = useMemo(() => {
-        if (!searchTerm.trim()) return pages;
-        return pages.map((page) => ({
-            pageContent: highlightMatches(page.pageContent, searchTerm),
+    const filteredChunks = useMemo(() => {
+        if (!searchTerm.trim()) return chunks;
+        return chunks.map((chunk) => ({
+            pageContent: highlightMatches(chunk.pageContent, searchTerm),
         }));
-    }, [pages, searchTerm]);
+    }, [chunks, searchTerm]);
 
     // Calculate total matches
     const totalMatches = useMemo(() => {
         if (!searchTerm.trim()) return 0;
-        return filteredPages.reduce((count, page) => {
-            const matches = (page.pageContent.match(/<mark /g) || []).length;
+        return filteredChunks.reduce((count, chunk) => {
+            const matches = (chunk.pageContent.match(/<mark /g) || []).length;
             return count + matches;
         }, 0);
-    }, [filteredPages, searchTerm]);
+    }, [filteredChunks, searchTerm]);
 
-    if (!pages || pages.length === 0) {
-        return <div className="text-gray-500 p-4">No pages to display.</div>;
+    if (!chunks || chunks.length === 0) {
+        return <div className="text-gray-500 p-4">No chunks to display.</div>;
     }
 
     return (
@@ -37,7 +37,7 @@ export default function PdfTextViewer({ pages }: PdfTextViewerProps) {
             <div className="px-4 py-2 bg-gray-900 border-b border-gray-700 flex items-center gap-2">
                 <input
                     type="text"
-                    placeholder="Search text..."
+                    placeholder="Search chunks..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="flex-1 p-2 text-sm rounded bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -49,22 +49,22 @@ export default function PdfTextViewer({ pages }: PdfTextViewerProps) {
                 )}
             </div>
 
-            {/* PDF pages */}
+            {/* PDF chunks */}
             <div className="overflow-auto flex-1 space-y-6">
-                {filteredPages.map((page, idx) => (
+                {filteredChunks.map((chunk, idx) => (
                     <div key={idx} className="relative">
                         {/* Sticky header */}
                         <div className="sticky top-0 bg-gray-800/90 py-1 px-2 z-10 border-b border-gray-700">
                             <h3 className="text-gray-400 font-semibold text-sm">
-                                Page {idx + 1}
+                                Chunk {idx + 1}
                             </h3>
                         </div>
 
-                        {/* Page text with top padding to avoid overlap */}
+                        {/* Chunk text with top padding to avoid overlap */}
                         <div
                             className="pt-8 text-sm text-gray-200 whitespace-pre-wrap"
                             dangerouslySetInnerHTML={{
-                                __html: page.pageContent,
+                                __html: chunk.pageContent,
                             }}
                         />
 

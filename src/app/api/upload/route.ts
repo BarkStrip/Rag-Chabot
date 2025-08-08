@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,10 +16,28 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBlob = new Blob([arrayBuffer], { type: "application/pdf" });
 
+    // Load the PDF document
     const loader = new WebPDFLoader(fileBlob);
-    const document = await loader.load();
+    const documents = await loader.load(); // This returns an array of Document objects
 
-    return Response.json({ document });
+    // Instantiate the text splitter
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,     // Max number of characters per chunk (default is 1000)
+      chunkOverlap: 200,  // Number of characters each chunk overlaps with the previous (default is 200)
+      separators: ["\n\n", "\n", " ", ""], // Hierarchy of separators to split on (default)
+    });
+
+    // Split the documents into chunks
+    const chunks = await textSplitter.splitDocuments(documents);
+
+    chunks.forEach((chunk, idx) => {
+      console.log(`--- Chunk ${idx + 1} ---`);
+      console.log(chunk.pageContent);
+      console.log('-------------------\n');
+    });
+
+    // Return chunk texts (or you could return metadata or length)
+    return Response.json({ documents, chunks });
 
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -27,6 +46,5 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
   }
 }

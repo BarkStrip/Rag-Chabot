@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Dropdown from '../components/Dropdown'
 import PdfViewer from "../components/PDFViewer"
 import PdfTextViewer from "@/components/PdfTextViewer";
+import PdfChunkViewer from '@/components/PdfChunkViewer';
 
 
 
@@ -17,13 +18,14 @@ const App: React.FC = () => {
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to hold the URL of the uploaded PDF file
-    const [pdfArray, setPdfArray] = useState<unknown[] | null>(null);
+    const [textArray, setTextArray] = useState<unknown[] | null>(null);
+    const [chunksArray, setChunksArray] = useState<unknown[] | null>(null);
     const [selectedView, setSelectedView] = useState<string>('View'); // default is 'Embedded'
 
 
     useEffect(() => {
-        console.log("pdfArray changed:", pdfArray);
-    }, [pdfArray]); // Runs when pdfArray changes
+        console.log("textArray changed:", textArray);
+    }, [textArray]); // Runs when textArray changes
 
     const handleSelect = (value: string) => {
         console.log('You selected:', value);
@@ -44,10 +46,11 @@ const App: React.FC = () => {
                 method: "POST",
                 body: formData,
             });
-            //setData(await res.json())
             const data = await res.json();
-            console.log(data.document);
-            setPdfArray(data.document);
+            setTextArray(data.documents);
+            setChunksArray(data.chunks);
+
+
 
             // Clean up previous blob URL before assigning a new one
             if (pdfUrl) {
@@ -178,7 +181,8 @@ const App: React.FC = () => {
                                             <button
                                                 onClick={() => {
                                                     URL.revokeObjectURL(pdfUrl);
-                                                    setPdfArray(null)
+                                                    setTextArray(null)
+                                                    setChunksArray(null)
                                                     setPdfUrl(null);
                                                 }}
                                                 className="text-sm bg-gray-600 hover:bg-gray-700  text-gray-200 py-1 px-2 rounded-sm transition-colors duration-20"
@@ -195,23 +199,38 @@ const App: React.FC = () => {
                         </div>
                         <div className="w-full h-[80vh]">
                             {selectedView === 'View' && pdfUrl && <PdfViewer pdfUrl={pdfUrl} />}
+                            {selectedView === "View" && (!pdfUrl) && (
+                                <div className="p-4 text-gray-500 italic">Upload pdf to see embedded view.</div>
+                            )}
                             {selectedView === "SeeText" &&
-                                pdfArray &&
-                                pdfArray.length > 0 &&
-                                isPdfWithContent(pdfArray[0]) && (
+                                textArray &&
+                                textArray.length > 0 &&
+                                isPdfWithContent(textArray[0]) && (
                                     <PdfTextViewer
-                                        pages={pdfArray.map((page) => ({
+                                        pages={textArray.map((page) => ({
                                             pageContent: (page as { pageContent: string }).pageContent,
                                         }))}
                                     />
 
 
                                 )}
-                            {selectedView === 'SeeChunk' && (
-                                <div className="p-4 text-gray-300">
-                                    {/* Future chunked view content */}
-                                    Chunked RAG output goes here...
-                                </div>
+                            {selectedView === "SeeText" && (!textArray || textArray.length === 0) && (
+                                <div className="p-4 text-gray-500 italic">Upload pdf to see extracted text.</div>
+                            )}
+                            {selectedView === "SeeChunk" &&
+                                chunksArray &&
+                                chunksArray.length > 0 &&
+                                isPdfWithContent(chunksArray[0]) && (
+                                    <PdfChunkViewer
+                                        chunks={chunksArray.map((chunk) => ({
+                                            pageContent: (chunk as { pageContent: string }).pageContent,
+                                        }))}
+                                    />
+
+                                )}
+
+                            {selectedView === "SeeChunk" && (!chunksArray || chunksArray.length === 0) && (
+                                <div className="p-4 text-gray-500 italic">Upload pdf to see content chunked.</div>
                             )}
                         </div>
 
