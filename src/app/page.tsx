@@ -1,6 +1,16 @@
 "use client"; // Ensures this component runs on the client side (required for using React hooks in Next.js App Router)
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Dropdown from '../components/Dropdown'
+import PdfViewer from "../components/PDFViewer"
+import PdfTextViewer from "@/components/PdfTextViewer";
 
+
+
+const options = [
+    { label: 'Embedded', value: 'View' },
+    { label: 'Text', value: 'SeeText' },
+    { label: 'Chunked', value: 'SeeChunk' },
+];
 
 const App: React.FC = () => {
     const [leftWidth, setLeftWidth] = useState<number>(33.33); // Start with 1/3 width
@@ -8,10 +18,17 @@ const App: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to hold the URL of the uploaded PDF file
     const [pdfArray, setPdfArray] = useState<unknown[] | null>(null);
+    const [selectedView, setSelectedView] = useState<string>('View'); // default is 'Embedded'
+
 
     useEffect(() => {
         console.log("pdfArray changed:", pdfArray);
     }, [pdfArray]); // Runs when pdfArray changes
+
+    const handleSelect = (value: string) => {
+        console.log('You selected:', value);
+        setSelectedView(value);
+    };
 
     // Handles file selection from the input
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,14 +153,18 @@ const App: React.FC = () => {
                         <div className="bg-gray-800 px-4 py-2">
                             <div className="mb-0">
                                 <div className="flex items-center justify-between overflow-hidden">
-                                    <h1 className="mb-0 text-xl font-large text-gray-400 dark:text-gray-400">PDF Viewer</h1>
+                                    <Dropdown
+                                        options={options}
+                                        value={selectedView}
+                                        onSelect={setSelectedView}
+                                    />
                                     {/* Custom styled file input button */}
                                     <div className="flex items-center space-x-1">
-                                        <label className="cursor-pointer text-sm bg-[#2c4875] hover:bg-[#233a5e] text-gray-200  py-1 px-3 rounded-sm transition-colors duration-20 inline-flex items-center">
+                                        <label className="cursor-pointer text-sm bg-[#2c4875] hover:bg-[#233a5e] text-gray-200  py-1 px-2 rounded-sm transition-colors duration-20 inline-flex items-center">
                                             <svg className="w-5 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                             </svg>
-                                            Choose PDF
+                                            New PDF
                                             <input
                                                 type="file"
                                                 accept="application/pdf"
@@ -160,7 +181,7 @@ const App: React.FC = () => {
                                                     setPdfArray(null)
                                                     setPdfUrl(null);
                                                 }}
-                                                className="text-sm bg-gray-600 hover:bg-gray-700  text-gray-200 py-1 px-3 rounded-sm transition-colors duration-20"
+                                                className="text-sm bg-gray-600 hover:bg-gray-700  text-gray-200 py-1 px-2 rounded-sm transition-colors duration-20"
                                             >
                                                 Clear PDF
                                             </button>
@@ -173,16 +194,27 @@ const App: React.FC = () => {
                             </div>
                         </div>
                         <div className="w-full h-[80vh]">
-                            {pdfUrl && (
-                                <embed
-                                    src={pdfUrl}
-                                    type="application/pdf"
-                                    width="100%"
-                                    height="100%"
-                                    className="border-0"
-                                />
+                            {selectedView === 'View' && pdfUrl && <PdfViewer pdfUrl={pdfUrl} />}
+                            {selectedView === "SeeText" &&
+                                pdfArray &&
+                                pdfArray.length > 0 &&
+                                isPdfWithContent(pdfArray[0]) && (
+                                    <PdfTextViewer
+                                        pages={pdfArray.map((page) => ({
+                                            pageContent: (page as { pageContent: string }).pageContent,
+                                        }))}
+                                    />
+
+
+                                )}
+                            {selectedView === 'SeeChunk' && (
+                                <div className="p-4 text-gray-300">
+                                    {/* Future chunked view content */}
+                                    Chunked RAG output goes here...
+                                </div>
                             )}
                         </div>
+
                     </div>
                 </div>
 
@@ -210,7 +242,7 @@ const App: React.FC = () => {
                     className="bg-gray-700 px-9 py-9 flex items-center justify-center overflow-hidden"
                     style={{ width: `${100 - leftWidth}%` }}
                 >
-                    {/* Overlay to prevent embedded content from interfering with drag */}
+                    {/* Overlay to prevent content from interfering with drag */}
                     {isDragging && (
                         <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />
                     )}
@@ -218,11 +250,10 @@ const App: React.FC = () => {
                     {/* Section 2 :  Display ChatBot */}
                     <div className="w-full h-full overflow-hidden">
                         <div className="bg-gray-800 px-4 py-2 overflow-hidden">
-                            <h1 className="text-xl font-large text-gray-400 dark:text-gray-400 ">Chat</h1>
+                            <div className="text-xl font- text-gray-400 dark:text-gray-400">
+                                Chat
+                            </div>
                         </div>
-                        {pdfArray && pdfArray.length > 0 && isPdfWithContent(pdfArray[0]) && pdfArray[0].pageContent && <div className="w-full h-[80vh] overflow-hidden whitespace-pre-wrap">
-                            {pdfArray[0].pageContent}
-                        </div>}
                     </div>
 
                 </div>
