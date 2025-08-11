@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 // SERVICE CAPACITY limits (internal - don't expose to users)
 const SERVICE_LIMITS = {
     MAX_REQUESTS_PER_MINUTE: 3,
@@ -14,7 +12,7 @@ const SERVICE_LIMITS = {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const makeEmbeddingRequest = async (batch: string[]): Promise<any> => {
+const makeEmbeddingRequest = async (batch: string[], openai: OpenAI): Promise<any> => {
     try {
         console.log(`Making embedding request for ${batch.length} chunks`);
 
@@ -36,6 +34,7 @@ const makeEmbeddingRequest = async (batch: string[]): Promise<any> => {
 
 export async function POST(req: Request) {
     try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const { chunks } = await req.json();
 
         if (!chunks || !Array.isArray(chunks)) {
@@ -79,7 +78,7 @@ export async function POST(req: Request) {
             console.log(`⏱️ Estimated time remaining: ${((batches.length - i - 1) * SERVICE_LIMITS.DELAY_BETWEEN_REQUESTS / 1000).toFixed(0)}s`);
 
             try {
-                const res = await makeEmbeddingRequest(batch);
+                const res = await makeEmbeddingRequest(batch, openai);
                 embeddings.push(...res.data.map((e: any) => e.embedding));
 
                 console.log(`✅ Batch ${i + 1} completed. Total embeddings: ${embeddings.length}`);
