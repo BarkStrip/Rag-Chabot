@@ -7,6 +7,14 @@ import PdfChunkViewer from '@/components/PdfChunkViewer';
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
+// Chat message type definition
+type ChatMessage = {
+    id: string;
+    type: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+};
+
 
 const options = [
     { label: 'Document', value: 'View' },
@@ -18,6 +26,8 @@ const App: React.FC = () => {
     const [leftWidth, setLeftWidth] = useState<number>(33.33); // Start with 1/3 width
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const chatMessagesRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to hold the URL of the uploaded PDF file
     const [textArray, setTextArray] = useState<unknown[] | null>(null);
     const [chunksArray, setChunksArray] = useState<unknown[] | null>(null);
@@ -27,6 +37,9 @@ const App: React.FC = () => {
     const [elapsedTime, setElapsedTime] = useState<number>(0);
     const [sessionId, setSessionId] = useState<string>("");
     const [embeddingsCreated, setEmbeddingsCreated] = useState<boolean>(false);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const [currentInput, setCurrentInput] = useState<string>("");
+    const [isSending, setIsSending] = useState<boolean>(false);
 
     // Generate unique session ID on component mount and cleanup old embeddings
     useEffect(() => {
@@ -120,6 +133,51 @@ const App: React.FC = () => {
         }
     };
 
+    // Send message function with auto-response
+    const handleSendMessage = async () => {
+        const trimmedInput = currentInput.trim();
+        if (!trimmedInput || isSending) return;
+
+        // Add user message
+        const userMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            type: 'user',
+            content: trimmedInput,
+            timestamp: new Date()
+        };
+
+        setChatMessages(prev => [...prev, userMessage]);
+        setCurrentInput("");
+        setIsSending(true);
+
+        // Simulate AI response with delay
+        setTimeout(() => {
+            const assistantMessage: ChatMessage = {
+                id: crypto.randomUUID(),
+                type: 'assistant',
+                content: `This is a placeholder response to your question: "${trimmedInput}". I would analyze the PDF content and provide a relevant answer here.`,
+                timestamp: new Date()
+            };
+
+            setChatMessages(prev => [...prev, assistantMessage]);
+            setIsSending(false);
+        }, 1500); // 1.5 second delay
+    };
+
+    // Handle Enter key press in input
+    const handleInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSendMessage();
+        }
+    };
+
+    // Scroll to bottom of chat messages
+    const scrollToBottom = () => {
+        if (chatMessagesRef.current) {
+            chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+        }
+    };
+
     const handleSelect = (value: string) => {
         setSelectedView(value);
     };
@@ -136,6 +194,9 @@ const App: React.FC = () => {
             
             // Reset chat interface state
             setEmbeddingsCreated(false);
+            setChatMessages([]);
+            setCurrentInput("");
+            setIsSending(false);
 
             const formData = new FormData();
             formData.append("file", file);
@@ -163,6 +224,11 @@ const App: React.FC = () => {
         } else {
             // Show an alert if the uploaded file is not a PDF
             alert('Please upload a valid PDF file.');
+        }
+
+        // Clear the file input value to allow re-uploading the same file
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
     };
 
@@ -218,6 +284,11 @@ const App: React.FC = () => {
             if (interval) clearInterval(interval);
         };
     }, [isCreatingEmbeddings, embeddingStartTime]);
+
+    // Auto-scroll to bottom when messages change or when sending state changes
+    useEffect(() => {
+        scrollToBottom();
+    }, [chatMessages, isSending]);
 
     // Define a type guard
     const isPdfWithContent = (item: unknown): item is { pageContent: string } => {
@@ -300,6 +371,7 @@ const App: React.FC = () => {
                                             </svg>
                                             New PDF
                                             <input
+                                                ref={fileInputRef}
                                                 type="file"
                                                 accept="application/pdf"
                                                 onChange={handleFileChange}
@@ -320,6 +392,9 @@ const App: React.FC = () => {
                                                     setChunksArray(null)
                                                     setPdfUrl(null);
                                                     setEmbeddingsCreated(false);
+                                                    setChatMessages([]);
+                                                    setCurrentInput("");
+                                                    setIsSending(false);
 
                                                     // Generate new session ID for next upload
                                                     const newSessionId = crypto.randomUUID();
@@ -416,7 +491,7 @@ const App: React.FC = () => {
                         </div>
 
                         {/* Chat content area */}
-                        <div className="w-full h-[80vh] flex items-center justify-center">
+                        <div className="w-full h-[80vh] flex items-center justify-center bg-gray-700">
                             {!pdfUrl && (
                                 <div className="p-4 text-gray-500 italic">Upload a PDF to start chatting about its contents.</div>
                             )}
@@ -461,18 +536,63 @@ const App: React.FC = () => {
                                 </div>
                             )}
                             {embeddingsCreated && (
-                                <div className="w-full h-full flex flex-col">
+                                <div className="w-full h-full flex flex-col bg-gray-700">
                                     {/* Chat Messages Area */}
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                        <div className="bg-gray-800 rounded-lg p-4 border border-gray-600">
-                                            <div className="flex items-start gap-3">
-                                                <div className="text-2xl">🤖</div>
-                                                <div className="text-gray-300">
-                                                    <div className="font-medium text-gray-200 mb-1">AI Assistant</div>
-                                                    <div>I'm ready to answer questions about your PDF! Ask me anything about the document content.</div>
+                                    <div ref={chatMessagesRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-700">
+                                        {/* Welcome message (always show first) */}
+                                        {chatMessages.length === 0 && (
+                                            <div className="bg-gray-800 rounded-lg p-4 border border-gray-600">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="text-2xl">🤖</div>
+                                                    <div className="text-gray-300">
+                                                        <div className="font-medium text-gray-200 mb-1">AI Assistant</div>
+                                                        <div>I'm ready to answer questions about your PDF! Ask me anything about the document content.</div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        )}
+                                        
+                                        {/* Dynamic chat messages */}
+                                        {chatMessages.map((message) => (
+                                            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-[80%] rounded-lg p-4 ${
+                                                    message.type === 'user' 
+                                                        ? 'bg-[#2c4875] text-gray-200' 
+                                                        : 'bg-gray-800 border border-gray-600'
+                                                }`}>
+                                                    {message.type === 'assistant' && (
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="text-2xl">🤖</div>
+                                                            <div className="text-gray-300">
+                                                                <div className="font-medium text-gray-200 mb-1">AI Assistant</div>
+                                                                <div>{message.content}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {message.type === 'user' && (
+                                                        <div>{message.content}</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        {/* Typing indicator */}
+                                        {isSending && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="text-2xl">🤖</div>
+                                                        <div className="text-gray-300">
+                                                            <div className="font-medium text-gray-200 mb-1">AI Assistant</div>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                                                                Thinking...
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Chat Input Area */}
@@ -480,15 +600,25 @@ const App: React.FC = () => {
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
+                                                value={currentInput}
+                                                onChange={(e) => setCurrentInput(e.target.value)}
+                                                onKeyPress={handleInputKeyPress}
                                                 placeholder="Ask me anything about the document..."
                                                 className="flex-1 p-3 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                disabled={isSending}
                                             />
                                             <button
-                                                className="px-6 py-3 bg-[#2c4875] hover:bg-[#233a5e] text-gray-200 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                                                onClick={handleSendMessage}
+                                                disabled={!currentInput.trim() || isSending}
+                                                className="px-6 py-3 bg-[#2c4875] hover:bg-[#233a5e] text-gray-200 rounded-lg transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                                </svg>
+                                                {isSending ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-200"></div>
+                                                ) : (
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                    </svg>
+                                                )}
                                                 Send
                                             </button>
                                         </div>
