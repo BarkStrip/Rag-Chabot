@@ -23,12 +23,8 @@ const App: React.FC = () => {
     const [selectedView, setSelectedView] = useState<string>('View'); // default is 'Embedded'
 
 
-    useEffect(() => {
-        console.log("textArray changed:", textArray);
-    }, [textArray]); // Runs when textArray changes
 
     const handleSelect = (value: string) => {
-        console.log('You selected:', value);
         setSelectedView(value);
     };
 
@@ -47,9 +43,28 @@ const App: React.FC = () => {
                 body: formData,
             });
             const data = await res.json();
+
+            // update UI
             setTextArray(data.documents);
             setChunksArray(data.chunks);
 
+            fetch("/api/enhance", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chunks: data.chunks }),
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error(`Enhance failed: ${res.status}`);
+                    return res.json();
+                })
+                .then(enhanced => {
+                    console.log("Enhanced embeddings created:", enhanced.count);
+                    // update with enhanced results
+                })
+                .catch(err => {
+                    console.error("Enhance API error:", err);
+                    // perhaps notify user or schedule a retry
+                });
 
 
             // Clean up previous blob URL before assigning a new one

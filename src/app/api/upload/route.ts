@@ -30,12 +30,6 @@ export async function POST(req: NextRequest) {
     // Split the documents into chunks
     const chunks = await textSplitter.splitDocuments(documents);
 
-    chunks.forEach((chunk, idx) => {
-      console.log(`--- Chunk ${idx + 1} ---`);
-      console.log(chunk.pageContent);
-      console.log('-------------------\n');
-    });
-
     // Return chunk texts (or you could return metadata or length)
     return Response.json({ documents, chunks });
 
