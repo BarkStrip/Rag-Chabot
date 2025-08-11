@@ -30,8 +30,9 @@ create extension if not exists vector;
 create table documents (
   id bigserial primary key,
   content text not null,
+  session_id text not null,
   metadata jsonb,
-  embedding vector(512),
+  embedding vector(1536),
   created_at timestamp with time zone default now()
 );
 ```
@@ -47,7 +48,7 @@ with (lists = 100);
 ```sql
 -- Create function for similarity search
 create or replace function match_documents (
-  query_embedding vector(512),
+  query_embedding vector(1536),
   match_threshold float,
   match_count int
 )
@@ -73,7 +74,7 @@ $$;
 
 ### Database Schema Explanation
 - **documents**: Main table storing PDF chunks and their vector embeddings
-- **embedding**: 512-dimensional vector using OpenAI's text-embedding-3-small model
+- **embedding**: 1536-dimensional vector using OpenAI's text-embedding-3-small model
 - **match_documents()**: Function for semantic similarity search using cosine distance
 - **ivfflat index**: Optimized index for fast vector similarity queries
 

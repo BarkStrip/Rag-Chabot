@@ -1,6 +1,7 @@
 // app/api/enhance/route.ts - Optimized for FREE TIER
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from '@supabase/supabase-js';
 
 // SERVICE CAPACITY limits (internal - don't expose to users)
 const SERVICE_LIMITS = {
@@ -35,6 +36,10 @@ const makeEmbeddingRequest = async (batch: string[], openai: OpenAI): Promise<an
 export async function POST(req: Request) {
     try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const supabase = createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
         const { chunks } = await req.json();
 
         if (!chunks || !Array.isArray(chunks)) {
@@ -110,7 +115,45 @@ export async function POST(req: Request) {
         }
 
         const totalTime = (Date.now() - startTime) / 1000;
-        console.log(`✅ All batches completed in ${totalTime}s`);
+        console.log(`✅ All ${embeddings.length} embeddings completed in ${totalTime}s`);
+
+        // Insert embeddings into Supabase database
+        let insertedCount = 0;
+        if (embeddings.length > 0) {
+            console.log(`💾 Inserting ${embeddings.length} embeddings into database...`);
+
+            const documentsToInsert = embeddings.map((embedding, index) => ({
+                content: chunksToProcess[index],
+                embedding: embedding,
+                metadata: {
+                    chunk_index: index,
+                    total_chunks: embeddings.length,
+                    created_at: new Date().toISOString()
+                }
+            }));
+
+            const { data, error } = await supabase
+                .from('documents')
+                .insert(documentsToInsert)
+                .select('id');
+
+            if (error) {
+                console.error('Database insertion error:', error);
+                return NextResponse.json({
+                    success: true,
+                    count: embeddings.length,
+                    processedChunks: embeddings.length,
+                    totalChunks: textChunks.length,
+                    processingTime: totalTime,
+                    batchesProcessed: batches.length,
+                    databaseError: error.message,
+                    note: "Embeddings created but database insertion failed"
+                }, { status: 207 }); // 207 Multi-Status for partial success
+            }
+
+            insertedCount = data?.length || 0;
+            console.log(`✅ Successfully inserted ${insertedCount} documents into database`);
+        }
 
         return NextResponse.json({
             success: true,
@@ -119,9 +162,10 @@ export async function POST(req: Request) {
             totalChunks: textChunks.length,
             processingTime: totalTime,
             batchesProcessed: batches.length,
+            databaseInserted: insertedCount,
             note: textChunks.length > maxChunksToProcess ?
                 `Processed ${maxChunksToProcess} chunks in this batch. Submit remaining chunks separately for continued processing.` :
-                undefined
+                `Successfully created and stored ${insertedCount} embeddings in vector database.`
         });
 
     } catch (error: unknown) {

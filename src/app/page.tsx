@@ -5,6 +5,7 @@ import PdfViewer from "../components/PDFViewer"
 import PdfTextViewer from "@/components/PdfTextViewer";
 import PdfChunkViewer from '@/components/PdfChunkViewer';
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 const options = [
@@ -110,7 +111,7 @@ const App: React.FC = () => {
     // Timer effect for embedding creation
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        
+
         if (isCreatingEmbeddings && embeddingStartTime) {
             interval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - embeddingStartTime) / 1000);
@@ -341,7 +342,7 @@ const App: React.FC = () => {
 
                                                 const result = await response.json();
                                                 setEmbeddingMessage(`✅ Success! Created ${result.count} embeddings in ${elapsedTime}s`);
-                                                
+
                                             } catch (error) {
                                                 console.error("Embedding creation failed:", error);
                                                 setEmbeddingMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
