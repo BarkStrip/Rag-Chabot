@@ -55,7 +55,7 @@ const App: React.FC = () => {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                 });
-                
+
                 if (response.ok) {
                     const result = await response.json();
                     if (result.deletedCount > 0) {
@@ -96,9 +96,9 @@ const App: React.FC = () => {
         if (!clearSessionId) return;
 
         console.log('Clearing session data on unload:', clearSessionId);
-        
+
         const data = JSON.stringify({ session_id: clearSessionId });
-        
+
         // Use sendBeacon for reliable unload cleanup (non-blocking)
         if (navigator.sendBeacon) {
             try {
@@ -155,7 +155,7 @@ const App: React.FC = () => {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: trimmedInput }),
+                body: JSON.stringify({ message: trimmedInput, session_id: sessionId }),
             });
 
             if (!response.ok) {
@@ -176,7 +176,7 @@ const App: React.FC = () => {
 
         } catch (error) {
             console.error("Chat API error:", error);
-            
+
             // Add error message to chat
             const errorMessage: ChatMessage = {
                 id: crypto.randomUUID(),
@@ -217,7 +217,7 @@ const App: React.FC = () => {
         if (file && file.type === 'application/pdf') {
             // Clear any existing session data before uploading new PDF
             await clearSessionData();
-            
+
             // Reset chat interface state
             setEmbeddingsCreated(false);
             setChatMessages([]);
@@ -266,7 +266,7 @@ const App: React.FC = () => {
                 console.log("Unmount cleanup: clearing session data");
                 clearSessionOnUnload(sessionId);
             }
-            
+
             // Clean up blob URL
             if (pdfUrl) {
                 console.log("Unmount cleanup: revoking blob URL");
@@ -280,7 +280,7 @@ const App: React.FC = () => {
         const handleBeforeUnload = () => {
             // Clear session data from database only on actual page exit/refresh
             clearSessionOnUnload();
-            
+
             // Clean up blob URL
             if (pdfUrl) {
                 console.log("Before unload cleanup: revoking blob URL");
@@ -289,7 +289,7 @@ const App: React.FC = () => {
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
-        
+
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
         };
@@ -577,15 +577,14 @@ const App: React.FC = () => {
                                                 </div>
                                             </div>
                                         )}
-                                        
+
                                         {/* Dynamic chat messages */}
                                         {chatMessages.map((message) => (
                                             <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-[80%] rounded-lg p-4 ${
-                                                    message.type === 'user' 
-                                                        ? 'bg-[#2c4875] text-gray-200' 
+                                                <div className={`max-w-[80%] rounded-lg p-4 ${message.type === 'user'
+                                                        ? 'bg-[#2c4875] text-gray-200'
                                                         : 'bg-gray-800 border border-gray-600'
-                                                }`}>
+                                                    }`}>
                                                     {message.type === 'assistant' && (
                                                         <div className="flex items-start gap-3">
                                                             <div className="text-2xl">🤖</div>
@@ -601,7 +600,7 @@ const App: React.FC = () => {
                                                 </div>
                                             </div>
                                         ))}
-                                        
+
                                         {/* Typing indicator */}
                                         {isSending && (
                                             <div className="flex justify-start">
@@ -620,7 +619,7 @@ const App: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     {/* Chat Input Area */}
                                     <div className="border-t border-gray-600 p-4">
                                         <div className="flex gap-2">
