@@ -25,7 +25,6 @@ const App: React.FC = () => {
     const [isCreatingEmbeddings, setIsCreatingEmbeddings] = useState<boolean>(false);
     const [embeddingStartTime, setEmbeddingStartTime] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState<number>(0);
-    const [embeddingMessage, setEmbeddingMessage] = useState<string>("");
     const [sessionId, setSessionId] = useState<string>("");
     const [embeddingsCreated, setEmbeddingsCreated] = useState<boolean>(false);
 
@@ -137,7 +136,6 @@ const App: React.FC = () => {
             
             // Reset chat interface state
             setEmbeddingsCreated(false);
-            setEmbeddingMessage("");
 
             const formData = new FormData();
             formData.append("file", file);
@@ -321,7 +319,6 @@ const App: React.FC = () => {
                                                     setTextArray(null)
                                                     setChunksArray(null)
                                                     setPdfUrl(null);
-                                                    setEmbeddingMessage("");
                                                     setEmbeddingsCreated(false);
 
                                                     // Generate new session ID for next upload
@@ -423,19 +420,17 @@ const App: React.FC = () => {
                             {!pdfUrl && (
                                 <div className="p-4 text-gray-500 italic">Upload a PDF to start chatting about its contents.</div>
                             )}
-                            {pdfUrl && !isCreatingEmbeddings && !embeddingMessage && (
+                            {pdfUrl && !isCreatingEmbeddings && !embeddingsCreated && (
                                 <div className="p-4">
                                     <button
                                         onClick={async () => {
                                             if (!chunksArray || chunksArray.length === 0) {
-                                                setEmbeddingMessage("No chunks available for embedding creation.");
                                                 return;
                                             }
 
                                             setIsCreatingEmbeddings(true);
                                             setEmbeddingStartTime(Date.now());
                                             setElapsedTime(0);
-                                            setEmbeddingMessage("");
 
                                             try {
                                                 const response = await fetch("/api/enhance", {
@@ -449,12 +444,11 @@ const App: React.FC = () => {
                                                 }
 
                                                 const result = await response.json();
-                                                setEmbeddingMessage(`✅ Success! Created ${result.count} embeddings in ${elapsedTime}s`);
                                                 setEmbeddingsCreated(true);
 
                                             } catch (error) {
                                                 console.error("Embedding creation failed:", error);
-                                                setEmbeddingMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                                // TODO: Add proper error handling UI
                                             } finally {
                                                 setIsCreatingEmbeddings(false);
                                                 setEmbeddingStartTime(null);
@@ -463,17 +457,6 @@ const App: React.FC = () => {
                                         className="text-sm bg-[#2c4875] hover:bg-[#233a5e] text-gray-200 py-2 px-4 rounded-sm transition-colors duration-20"
                                     >
                                         Create Embeddings
-                                    </button>
-                                </div>
-                            )}
-                            {pdfUrl && !isCreatingEmbeddings && embeddingMessage && !embeddingsCreated && (
-                                <div className="p-4 flex flex-col items-center gap-2">
-                                    <div className="text-sm text-gray-300">{embeddingMessage}</div>
-                                    <button
-                                        onClick={() => setEmbeddingMessage("")}
-                                        className="text-xs bg-gray-600 hover:bg-gray-700 text-gray-200 py-1 px-3 rounded-sm transition-colors duration-20"
-                                    >
-                                        Try Again
                                     </button>
                                 </div>
                             )}
