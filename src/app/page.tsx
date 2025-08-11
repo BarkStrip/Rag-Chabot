@@ -27,6 +27,7 @@ const App: React.FC = () => {
     const [elapsedTime, setElapsedTime] = useState<number>(0);
     const [embeddingMessage, setEmbeddingMessage] = useState<string>("");
     const [sessionId, setSessionId] = useState<string>("");
+    const [embeddingsCreated, setEmbeddingsCreated] = useState<boolean>(false);
 
     // Generate unique session ID on component mount and cleanup old embeddings
     useEffect(() => {
@@ -133,6 +134,10 @@ const App: React.FC = () => {
         if (file && file.type === 'application/pdf') {
             // Clear any existing session data before uploading new PDF
             await clearSessionData();
+            
+            // Reset chat interface state
+            setEmbeddingsCreated(false);
+            setEmbeddingMessage("");
 
             const formData = new FormData();
             formData.append("file", file);
@@ -317,6 +322,7 @@ const App: React.FC = () => {
                                                     setChunksArray(null)
                                                     setPdfUrl(null);
                                                     setEmbeddingMessage("");
+                                                    setEmbeddingsCreated(false);
 
                                                     // Generate new session ID for next upload
                                                     const newSessionId = crypto.randomUUID();
@@ -444,6 +450,7 @@ const App: React.FC = () => {
 
                                                 const result = await response.json();
                                                 setEmbeddingMessage(`✅ Success! Created ${result.count} embeddings in ${elapsedTime}s`);
+                                                setEmbeddingsCreated(true);
 
                                             } catch (error) {
                                                 console.error("Embedding creation failed:", error);
@@ -459,7 +466,7 @@ const App: React.FC = () => {
                                     </button>
                                 </div>
                             )}
-                            {pdfUrl && !isCreatingEmbeddings && embeddingMessage && (
+                            {pdfUrl && !isCreatingEmbeddings && embeddingMessage && !embeddingsCreated && (
                                 <div className="p-4 flex flex-col items-center gap-2">
                                     <div className="text-sm text-gray-300">{embeddingMessage}</div>
                                     <button
@@ -468,6 +475,41 @@ const App: React.FC = () => {
                                     >
                                         Try Again
                                     </button>
+                                </div>
+                            )}
+                            {embeddingsCreated && (
+                                <div className="w-full h-full flex flex-col">
+                                    {/* Chat Messages Area */}
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                        <div className="bg-gray-800 rounded-lg p-4 border border-gray-600">
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-2xl">🤖</div>
+                                                <div className="text-gray-300">
+                                                    <div className="font-medium text-gray-200 mb-1">AI Assistant</div>
+                                                    <div>I'm ready to answer questions about your PDF! Ask me anything about the document content.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Chat Input Area */}
+                                    <div className="border-t border-gray-600 p-4">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Ask me anything about the document..."
+                                                className="flex-1 p-3 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                            <button
+                                                className="px-6 py-3 bg-[#2c4875] hover:bg-[#233a5e] text-gray-200 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                </svg>
+                                                Send
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             {isCreatingEmbeddings && (
