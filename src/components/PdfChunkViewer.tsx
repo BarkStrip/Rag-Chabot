@@ -39,7 +39,7 @@ export default function PdfChunkViewer({ chunks }: PdfChunkViewerProps) {
                     type="text"
                     placeholder="Search chunks..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                     className="flex-1 p-2 text-sm rounded bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {searchTerm && (

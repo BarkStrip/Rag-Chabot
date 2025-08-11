@@ -86,5 +86,3 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
-
-*Note: This is a portfolio project demonstrating RAG architecture. Set up your own API keys in env.local to run locally.*

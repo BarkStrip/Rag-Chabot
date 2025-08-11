@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
             try {
                 const res = await makeEmbeddingRequest(batch);
-                embeddings.push(...res.data.map(e => e.embedding));
+                embeddings.push(...res.data.map((e: any) => e.embedding));
 
                 console.log(`✅ Batch ${i + 1} completed. Total embeddings: ${embeddings.length}`);
 
