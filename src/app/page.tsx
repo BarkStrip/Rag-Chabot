@@ -26,8 +26,99 @@ const App: React.FC = () => {
     const [embeddingStartTime, setEmbeddingStartTime] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState<number>(0);
     const [embeddingMessage, setEmbeddingMessage] = useState<string>("");
+    const [sessionId, setSessionId] = useState<string>("");
 
+    // Generate unique session ID on component mount and cleanup old embeddings
+    useEffect(() => {
+        const newSessionId = crypto.randomUUID();
+        setSessionId(newSessionId);
+        console.log('New session started:', newSessionId);
 
+        // Clean up old embeddings (48+ hours old) on app startup
+        const cleanupOldEmbeddings = async () => {
+            try {
+                console.log('🧹 Running cleanup of old embeddings...');
+                const response = await fetch("/api/cleanup-old", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.deletedCount > 0) {
+                        console.log(`✅ Cleaned up ${result.deletedCount} old embeddings from ${result.uniqueSessionsAffected} sessions`);
+                    } else {
+                        console.log('✨ No old embeddings found to clean up');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to cleanup old embeddings:', error);
+                // Don't fail app startup if cleanup fails
+            }
+        };
+
+        // Run cleanup after a short delay to avoid blocking initial render
+        setTimeout(cleanupOldEmbeddings, 2000);
+    }, []);
+
+    // Helper function to clear session data
+    const clearSessionData = async (clearSessionId: string = sessionId) => {
+        if (!clearSessionId) return;
+
+        try {
+            console.log('Clearing session data:', clearSessionId);
+            await fetch("/api/clear-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: clearSessionId }),
+            });
+        } catch (error) {
+            console.error('Failed to clear session data:', error);
+            // Don't fail the operation if session cleanup fails
+        }
+    };
+
+    // Robust cleanup function for page unload using sendBeacon
+    const clearSessionOnUnload = (clearSessionId: string = sessionId) => {
+        if (!clearSessionId) return;
+
+        console.log('Clearing session data on unload:', clearSessionId);
+        
+        const data = JSON.stringify({ session_id: clearSessionId });
+        
+        // Use sendBeacon for reliable unload cleanup (non-blocking)
+        if (navigator.sendBeacon) {
+            try {
+                const blob = new Blob([data], { type: 'application/json' });
+                navigator.sendBeacon('/api/clear-session', blob);
+            } catch (error) {
+                console.error('sendBeacon failed:', error);
+                // Fallback to synchronous fetch
+                try {
+                    fetch("/api/clear-session", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: data,
+                        keepalive: true
+                    });
+                } catch (fallbackError) {
+                    console.error('Fallback cleanup failed:', fallbackError);
+                }
+            }
+        } else {
+            // Legacy browser fallback
+            try {
+                fetch("/api/clear-session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: data,
+                    keepalive: true
+                });
+            } catch (error) {
+                console.error('Legacy cleanup failed:', error);
+            }
+        }
+    };
 
     const handleSelect = (value: string) => {
         setSelectedView(value);
@@ -40,6 +131,9 @@ const App: React.FC = () => {
 
         // Only proceed if a PDF file is selected
         if (file && file.type === 'application/pdf') {
+            // Clear any existing session data before uploading new PDF
+            await clearSessionData();
+
             const formData = new FormData();
             formData.append("file", file);
 
@@ -53,23 +147,6 @@ const App: React.FC = () => {
             setTextArray(data.documents);
             setChunksArray(data.chunks);
 
-            // Temporarily disabled due to OpenAI quota limits
-            // fetch("/api/enhance", {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ chunks: data.chunks }),
-            // })
-            //     .then(res => {
-            //         if (!res.ok) throw new Error(`Enhance failed: ${res.status}`);
-            //         return res.json();
-            //     })
-            //     .then(enhanced => {
-            //         // update with enhanced results
-            //     })
-            //     .catch(err => {
-            //         console.error("Enhance API error:", err);
-            //         // perhaps notify user or schedule a retry
-            //     });
 
 
             // Clean up previous blob URL before assigning a new one
@@ -89,24 +166,39 @@ const App: React.FC = () => {
     // Cleanup on component unmount
     useEffect(() => {
         return () => {
+            // Clear session data on component unmount
+            if (sessionId) {
+                console.log("Unmount cleanup: clearing session data");
+                clearSessionOnUnload(sessionId);
+            }
+            
+            // Clean up blob URL
             if (pdfUrl) {
                 console.log("Unmount cleanup: revoking blob URL");
                 URL.revokeObjectURL(pdfUrl);
             }
         };
-    }, [pdfUrl]);
+    }, [pdfUrl, sessionId]);
 
-    // Cleanup on tab close/reload
+    // Cleanup on tab close/reload (only on actual page exit/refresh)
     useEffect(() => {
         const handleBeforeUnload = () => {
+            // Clear session data from database only on actual page exit/refresh
+            clearSessionOnUnload();
+            
+            // Clean up blob URL
             if (pdfUrl) {
                 console.log("Before unload cleanup: revoking blob URL");
                 URL.revokeObjectURL(pdfUrl);
             }
         };
+
         window.addEventListener("beforeunload", handleBeforeUnload);
-        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    }, [pdfUrl]);
+        
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [pdfUrl, sessionId]);
 
     // Timer effect for embedding creation
     useEffect(() => {
@@ -215,11 +307,21 @@ const App: React.FC = () => {
                                         {/* Clear button to remove current PDF */}
                                         {pdfUrl && (
                                             <button
-                                                onClick={() => {
+                                                onClick={async () => {
+                                                    // Clear session data from database
+                                                    await clearSessionData();
+
+                                                    // Clear local state
                                                     URL.revokeObjectURL(pdfUrl);
                                                     setTextArray(null)
                                                     setChunksArray(null)
                                                     setPdfUrl(null);
+                                                    setEmbeddingMessage("");
+
+                                                    // Generate new session ID for next upload
+                                                    const newSessionId = crypto.randomUUID();
+                                                    setSessionId(newSessionId);
+                                                    console.log('New session started after clear:', newSessionId);
                                                 }}
                                                 className="text-sm bg-gray-600 hover:bg-gray-700  text-gray-200 py-1 px-2 rounded-sm transition-colors duration-20"
                                             >
@@ -333,7 +435,7 @@ const App: React.FC = () => {
                                                 const response = await fetch("/api/enhance", {
                                                     method: "POST",
                                                     headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({ chunks: chunksArray }),
+                                                    body: JSON.stringify({ chunks: chunksArray, session_id: sessionId }),
                                                 });
 
                                                 if (!response.ok) {

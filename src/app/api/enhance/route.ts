@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from '@supabase/supabase-js';
 
-// SERVICE CAPACITY limits (internal - don't expose to users)
+// SERVICE CAPACITY limits
 const SERVICE_LIMITS = {
     MAX_REQUESTS_PER_MINUTE: 3,
     DELAY_BETWEEN_REQUESTS: 25000, // 25 seconds between requests
@@ -40,10 +40,30 @@ export async function POST(req: Request) {
             process.env.SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
-        const { chunks } = await req.json();
+        const { chunks, session_id } = await req.json();
 
         if (!chunks || !Array.isArray(chunks)) {
             return NextResponse.json({ error: "Invalid chunks data" }, { status: 400 });
+        }
+
+        if (!session_id) {
+            return NextResponse.json({ error: "session_id is required" }, { status: 400 });
+        }
+
+        // Clear existing embeddings for this session before creating new ones
+        console.log(`🗑️ Clearing existing embeddings for session: ${session_id}`);
+        const { data: deletedData, error: deleteError } = await supabase
+            .from('documents')
+            .delete()
+            .eq('session_id', session_id)
+            .select('id');
+
+        if (deleteError) {
+            console.error('Failed to clear existing embeddings:', deleteError);
+            // Continue anyway - don't fail the whole process
+        } else {
+            const deletedCount = deletedData?.length || 0;
+            console.log(`✅ Cleared ${deletedCount} existing documents for session`);
         }
 
         // Extract and validate text content
@@ -124,6 +144,7 @@ export async function POST(req: Request) {
 
             const documentsToInsert = embeddings.map((embedding, index) => ({
                 content: chunksToProcess[index],
+                session_id: session_id,
                 embedding: embedding,
                 metadata: {
                     chunk_index: index,
