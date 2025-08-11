@@ -150,18 +150,44 @@ const App: React.FC = () => {
         setCurrentInput("");
         setIsSending(true);
 
-        // Simulate AI response with delay
-        setTimeout(() => {
+        // Get real AI response from OpenAI
+        try {
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: trimmedInput }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
             const assistantMessage: ChatMessage = {
                 id: crypto.randomUUID(),
                 type: 'assistant',
-                content: `This is a placeholder response to your question: "${trimmedInput}". I would analyze the PDF content and provide a relevant answer here.`,
+                content: data.response,
                 timestamp: new Date()
             };
 
             setChatMessages(prev => [...prev, assistantMessage]);
             setIsSending(false);
-        }, 1500); // 1.5 second delay
+
+        } catch (error) {
+            console.error("Chat API error:", error);
+            
+            // Add error message to chat
+            const errorMessage: ChatMessage = {
+                id: crypto.randomUUID(),
+                type: 'assistant',
+                content: error instanceof Error ? error.message : "I encountered an issue. Please try asking again.",
+                timestamp: new Date()
+            };
+
+            setChatMessages(prev => [...prev, errorMessage]);
+            setIsSending(false);
+        }
     };
 
     // Handle Enter key press in input
