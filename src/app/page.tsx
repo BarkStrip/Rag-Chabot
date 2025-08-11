@@ -4,11 +4,11 @@ import Dropdown from '../components/Dropdown'
 import PdfViewer from "../components/PDFViewer"
 import PdfTextViewer from "@/components/PdfTextViewer";
 import PdfChunkViewer from '@/components/PdfChunkViewer';
-
+import { Analytics } from "@vercel/analytics/next"
 
 
 const options = [
-    { label: 'Embedded', value: 'View' },
+    { label: 'Document', value: 'View' },
     { label: 'Text', value: 'SeeText' },
     { label: 'Chunked', value: 'SeeChunk' },
 ];
@@ -20,7 +20,10 @@ const App: React.FC = () => {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to hold the URL of the uploaded PDF file
     const [textArray, setTextArray] = useState<unknown[] | null>(null);
     const [chunksArray, setChunksArray] = useState<unknown[] | null>(null);
-    const [selectedView, setSelectedView] = useState<string>('View'); // default is 'Embedded'
+    const [selectedView, setSelectedView] = useState<string>('View'); // default is 'Document'
+    const [isCreatingEmbeddings, setIsCreatingEmbeddings] = useState<boolean>(false);
+    const [embeddingStartTime, setEmbeddingStartTime] = useState<number | null>(null);
+    const [elapsedTime, setElapsedTime] = useState<number>(0);
 
 
 
@@ -48,23 +51,23 @@ const App: React.FC = () => {
             setTextArray(data.documents);
             setChunksArray(data.chunks);
 
-            fetch("/api/enhance", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chunks: data.chunks }),
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error(`Enhance failed: ${res.status}`);
-                    return res.json();
-                })
-                .then(enhanced => {
-                    console.log("Enhanced embeddings created:", enhanced.count);
-                    // update with enhanced results
-                })
-                .catch(err => {
-                    console.error("Enhance API error:", err);
-                    // perhaps notify user or schedule a retry
-                });
+            // Temporarily disabled due to OpenAI quota limits
+            // fetch("/api/enhance", {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ chunks: data.chunks }),
+            // })
+            //     .then(res => {
+            //         if (!res.ok) throw new Error(`Enhance failed: ${res.status}`);
+            //         return res.json();
+            //     })
+            //     .then(enhanced => {
+            //         // update with enhanced results
+            //     })
+            //     .catch(err => {
+            //         console.error("Enhance API error:", err);
+            //         // perhaps notify user or schedule a retry
+            //     });
 
 
             // Clean up previous blob URL before assigning a new one
@@ -102,6 +105,22 @@ const App: React.FC = () => {
         window.addEventListener("beforeunload", handleBeforeUnload);
         return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [pdfUrl]);
+
+    // Timer effect for embedding creation
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        
+        if (isCreatingEmbeddings && embeddingStartTime) {
+            interval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - embeddingStartTime) / 1000);
+                setElapsedTime(elapsed);
+            }, 1000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isCreatingEmbeddings, embeddingStartTime]);
 
     // Define a type guard
     const isPdfWithContent = (item: unknown): item is { pageContent: string } => {
@@ -215,7 +234,7 @@ const App: React.FC = () => {
                         <div className="w-full h-[80vh]">
                             {selectedView === 'View' && pdfUrl && <PdfViewer pdfUrl={pdfUrl} />}
                             {selectedView === "View" && (!pdfUrl) && (
-                                <div className="p-4 text-gray-500 italic">Upload pdf to see embedded view.</div>
+                                <div className="p-4 text-gray-500 italic">Upload pdf to see document preview.</div>
                             )}
                             {selectedView === "SeeText" &&
                                 textArray &&
@@ -287,6 +306,40 @@ const App: React.FC = () => {
                             <div className="text-xl font- text-gray-400 dark:text-gray-400">
                                 Chat
                             </div>
+                        </div>
+
+                        {/* Chat content area */}
+                        <div className="w-full h-[80vh] flex items-center justify-center">
+                            {!pdfUrl && (
+                                <div className="p-4 text-gray-500 italic">Upload a PDF to start chatting about its contents.</div>
+                            )}
+                            {pdfUrl && !isCreatingEmbeddings && (
+                                <div className="p-4">
+                                    <button
+                                        onClick={() => {
+                                            setIsCreatingEmbeddings(true);
+                                            setEmbeddingStartTime(Date.now());
+                                            setElapsedTime(0);
+                                            // TODO: Implement embeddings creation functionality
+                                            console.log("Create Embeddings clicked");
+                                            // For demo purposes, simulate loading for 3 seconds
+                                            setTimeout(() => {
+                                                setIsCreatingEmbeddings(false);
+                                                setEmbeddingStartTime(null);
+                                            }, 3000);
+                                        }}
+                                        className="text-sm bg-[#2c4875] hover:bg-[#233a5e] text-gray-200 py-2 px-4 rounded-sm transition-colors duration-20"
+                                    >
+                                        Create Embeddings
+                                    </button>
+                                </div>
+                            )}
+                            {isCreatingEmbeddings && (
+                                <div className="p-4 text-gray-500 italic flex items-center gap-2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                                    Creating vector embeddings... ({elapsedTime}s)
+                                </div>
+                            )}
                         </div>
                     </div>
 
