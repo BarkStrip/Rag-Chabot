@@ -116,7 +116,7 @@ export async function POST(req: Request) {
                 };
             })
             .filter((doc: any) => doc !== null) // Remove null entries
-            .filter((doc: any) => doc.similarity > 0.5) // Lower threshold for debugging
+            .filter((doc: any) => doc.similarity > 0.2) // Lower threshold for debugging
             .sort((a: any, b: any) => b.similarity - a.similarity) // Sort by similarity desc
             .slice(0, 5) || []; // Take top 5
 
